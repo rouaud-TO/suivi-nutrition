@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tableau de bord — Mensurations</title>
+<style>
+  /*
+    Page d'accueil du tableau de bord.
+    Elle ne fait qu'une chose : afficher l'application Apps Script dans un cadre.
+
+    Deux raisons d'exister.
+    1. Le bandeau bleu « This application was created by a Google Apps Script
+       user » est ajoute par Google autour de la page servie en /exec. Affichee
+       dans un cadre depuis un autre site, l'application arrive sans lui.
+       C'est possible parce que doGet pose XFrameOptionsMode.ALLOWALL.
+    2. La verification Google, qui leve l'avertissement du premier lancement et
+       le plafond des 100 utilisateurs, exige une page d'accueil publique et une
+       politique de confidentialite sur un domaine. Cette page en est le depart.
+  */
+  :root {
+    --ground: #eef1f8;
+    --carte: #ffffff;
+    --bord: #e4e8f2;
+    --texte: #14183a;
+    --texte-doux: #6b7395;
+    --accent: #4338ca;
+    --accent-doux: #eef0ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--texte);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #cadre {
+    display: block;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    border: 0;
+  }
+  #cadre[hidden] { display: none; }
+
+  .accueil {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 48px 20px;
+  }
+  .carte {
+    background: var(--carte);
+    border: 1px solid var(--bord);
+    border-radius: 14px;
+    padding: 26px;
+    box-shadow: 0 1px 2px rgba(20,24,58,.05), 0 8px 24px rgba(20,24,58,.04);
+  }
+  .badge {
+    display: inline-block;
+    background: var(--accent-doux); color: var(--accent);
+    border-radius: 999px; padding: 5px 12px;
+    font-size: 12px; font-weight: 600;
+  }
+  h1 { font-size: 24px; margin: 12px 0 8px; letter-spacing: -.2px; }
+  p { margin: 0 0 14px; color: var(--texte-doux); }
+  p:last-child { margin-bottom: 0; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 18px 0 6px; }
+  .champ { display: flex; gap: 8px; flex-wrap: wrap; }
+  input {
+    flex: 1 1 240px; min-width: 0;
+    border: 1px solid var(--bord); border-radius: 10px;
+    padding: 11px 13px; font: inherit; background: var(--ground); color: inherit;
+  }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 10px;
+    padding: 11px 18px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button:hover { filter: brightness(1.08); }
+  code {
+    background: var(--ground); border: 1px solid var(--bord);
+    border-radius: 5px; padding: 1px 5px; font-size: .9em;
+  }
+</style>
+</head>
+<body>
+
+<iframe id="cadre" title="Tableau de bord des mensurations" hidden></iframe>
+
+<main class="accueil" id="accueil" hidden>
+  <section class="carte">
+    <span class="badge">Suivi corporel &amp; mensurations</span>
+    <h1>Tableau de bord</h1>
+    <p>Cette page affiche le tableau de bord d'une fiche de suivi. Il lui faut l'identifiant de la feuille&nbsp;: ajoutez-le à l'adresse, après <code>?id=</code>.</p>
+    <p>L'identifiant se trouve dans l'adresse de la feuille Google Sheets, entre <code>/d/</code> et <code>/edit</code>.</p>
+
+    <label for="saisie">Identifiant ou adresse de la feuille</label>
+    <div class="champ">
+      <input id="saisie" type="text" placeholder="Collez l'adresse de la feuille…" autocomplete="off" spellcheck="false">
+      <button id="ouvrir" type="button">Ouvrir</button>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var APPLICATION = 'https://script.google.com/macros/s/' +
+    'AKfycbwmyQVvAx_cF0fOEzkjIKfxrqqvJ6qhiBquALOuA9ckSCECyJ5SGdJrAkt6YF-DVCTs/exec';
+
+  // Tolere ce qu'on colle vraiment : l'adresse complete de la feuille, une
+  // barre oblique de trop, ou l'identifiant seul. Une barre oblique en trop
+  // faisait echouer la lecture avec « Illegal spreadsheet id or key ».
+  function extraireId(brut) {
+    if (!brut) return '';
+    var texte = String(brut).trim();
+    var depuisUrl = /\/spreadsheets\/d\/([-\w]{20,})/.exec(texte) || /\/d\/([-\w]{20,})/.exec(texte);
+    if (depuisUrl) return depuisUrl[1];
+    var seul = /([-\w]{20,})/.exec(texte);
+    return seul ? seul[1] : '';
+  }
+
+  function parametre(nom) {
+    var re = new RegExp('[?&]' + nom + '=([^&#]*)');
+    var m = re.exec(window.location.search);
+    return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : '';
+  }
+
+  function afficher(id) {
+    var cadre = document.getElementById('cadre');
+    cadre.src = APPLICATION + '?id=' + encodeURIComponent(id);
+    cadre.hidden = false;
+    document.getElementById('accueil').hidden = true;
+  }
+
+  function demander() {
+    document.getElementById('accueil').hidden = false;
+
+    var saisie = document.getElementById('saisie');
+    function valider() {
+      var id = extraireId(saisie.value);
+      if (id) window.location.search = '?id=' + encodeURIComponent(id);
+    }
+    document.getElementById('ouvrir').addEventListener('click', valider);
+    saisie.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') valider();
+    });
+  }
+
+  var id = extraireId(parametre('id'));
+  if (id) {
+    afficher(id);
+  } else {
+    demander();
+  }
+})();
+</script>
+
+</body>
+</html>
