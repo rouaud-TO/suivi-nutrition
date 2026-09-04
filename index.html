@@ -68,6 +68,11 @@
   p:last-child { margin-bottom: 0; }
   label { display: block; font-size: 13px; font-weight: 600; margin: 18px 0 6px; }
   .champ { display: flex; gap: 8px; flex-wrap: wrap; }
+  select {
+    flex: 1 1 240px; min-width: 0;
+    border: 1px solid var(--bord); border-radius: 10px;
+    padding: 11px 13px; font: inherit; background: var(--ground); color: inherit;
+  }
   input {
     flex: 1 1 240px; min-width: 0;
     border: 1px solid var(--bord); border-radius: 10px;
@@ -101,6 +106,14 @@
       <input id="saisie" type="text" placeholder="Collez l'adresse de la feuille…" autocomplete="off" spellcheck="false">
       <button id="ouvrir" type="button">Ouvrir</button>
     </div>
+
+    <label for="vue">Tableau de bord</label>
+    <div class="champ">
+      <select id="vue">
+        <option value="mensurations">Mensurations</option>
+        <option value="suivi">Suivi journalier</option>
+      </select>
+    </div>
   </section>
 </main>
 
@@ -129,9 +142,19 @@
     return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : '';
   }
 
+  // Tous les parametres de l'adresse sont transmis a l'application, pas
+  // seulement l'identifiant : c'est ainsi que ?vue=suivi atteint le bon
+  // tableau de bord. Un parametre oublie ici renvoie silencieusement sur la
+  // vue par defaut.
+  function construireSrc(id) {
+    var params = new URLSearchParams(window.location.search);
+    params.set('id', id);
+    return APPLICATION + '?' + params.toString();
+  }
+
   function afficher(id) {
     var cadre = document.getElementById('cadre');
-    cadre.src = APPLICATION + '?id=' + encodeURIComponent(id);
+    cadre.src = construireSrc(id);
     cadre.hidden = false;
     document.getElementById('accueil').hidden = true;
   }
@@ -142,8 +165,17 @@
     var saisie = document.getElementById('saisie');
     function valider() {
       var id = extraireId(saisie.value);
-      if (id) window.location.search = '?id=' + encodeURIComponent(id);
+      if (!id) return;
+      var params = new URLSearchParams(window.location.search);
+      params.set('id', id);
+      window.location.search = '?' + params.toString();
     }
+    document.getElementById('vue').value = parametre('vue') || 'mensurations';
+    document.getElementById('vue').addEventListener('change', function () {
+      var params = new URLSearchParams(window.location.search);
+      params.set('vue', this.value);
+      history.replaceState(null, '', '?' + params.toString());
+    });
     document.getElementById('ouvrir').addEventListener('click', valider);
     saisie.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') valider();

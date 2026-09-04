@@ -47,6 +47,36 @@ test('ne fabrique pas d\'identifiant a partir de rien', () => {
   });
 });
 
+// construireSrc est extraite du fichier publie et executee avec un faux
+// window : c'est elle qui a laisse tomber ?vue=suivi et renvoye tout le monde
+// sur le tableau de bord par defaut.
+function construireSrcPublie(search) {
+  const corps = /function construireSrc[\s\S]*?\n  }/.exec(SOURCE);
+  assert.ok(corps, 'construireSrc introuvable dans index.html');
+  const fabrique = new Function(
+    'window', 'APPLICATION', 'URLSearchParams', corps[0] + '; return construireSrc;'
+  );
+  return fabrique({ location: { search: search } }, 'https://app/exec', URLSearchParams);
+}
+
+test('transmet tous les parametres a l\'application, pas seulement l\'identifiant', () => {
+  const avecVue = construireSrcPublie('?id=ABC&vue=suivi')('ABC');
+  assert.ok(avecVue.indexOf('vue=suivi') !== -1, avecVue);
+  assert.ok(avecVue.indexOf('id=ABC') !== -1, avecVue);
+
+  const sansVue = construireSrcPublie('?id=ABC')('ABC');
+  assert.ok(sansVue.indexOf('id=ABC') !== -1, sansVue);
+  assert.ok(sansVue.indexOf('vue=') === -1, 'aucune vue imposee par defaut : ' + sansVue);
+});
+
+test('l\'identifiant nettoye remplace celui de l\'adresse', () => {
+  // L'adresse peut porter un identifiant colle avec une barre oblique ; c'est
+  // la version nettoyee qui doit partir vers l'application.
+  const src = construireSrcPublie('?id=%2FABC&vue=suivi')('ABC');
+  assert.ok(src.indexOf('id=ABC') !== -1, src);
+  assert.ok(src.indexOf('%2F') === -1, 'la barre oblique ne doit pas subsister : ' + src);
+});
+
 test('la page cadre l\'adresse /exec du deploiement', () => {
   assert.ok(/AKfyc[-\w]+/.test(SOURCE), 'adresse du deploiement introuvable');
   assert.ok(SOURCE.indexOf('/exec') !== -1, 'doit cadrer /exec, jamais /dev');
