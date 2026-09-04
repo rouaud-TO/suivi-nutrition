@@ -77,16 +77,13 @@ test('l\'identifiant nettoye remplace celui de l\'adresse', () => {
   assert.ok(src.indexOf('%2F') === -1, 'la barre oblique ne doit pas subsister : ' + src);
 });
 
-test('bascule sur l\'adresse directe si le cadre ne repond pas', () => {
-  // Le cadre echoue la ou les cookies tiers sont bloques : Google rend un 401.
-  // La page doit alors partir sur l'adresse directe plutot que laisser l'erreur.
-  assert.ok(/postMessage|addEventListener\('message'/.test(SOURCE),
-            'la page doit ecouter le signal de chargement');
-  assert.ok(SOURCE.indexOf('tableau-de-bord-pret') !== -1,
-            'le signal attendu doit etre nomme');
+test('part directement sur l\'application, sans cadre ni attente', () => {
+  // Le cadre echouait la ou les cookies tiers sont bloques (401 de Google), et
+  // le detecter imposait une attente a chaque ouverture. On redirige.
   assert.ok(/location\.replace/.test(SOURCE),
-            'la bascule doit remplacer l\'adresse, pas empiler un historique');
-  assert.ok(/DELAI_BASCULE\s*=\s*\d+/.test(SOURCE), 'un delai explicite est attendu');
+            'la redirection doit remplacer l\'adresse, pas empiler un historique');
+  assert.ok(SOURCE.indexOf('<iframe') === -1, 'plus aucun cadre dans la page');
+  assert.ok(!/setTimeout/.test(SOURCE), 'aucune attente avant d\'afficher');
 });
 
 test('la page cadre l\'adresse /exec du deploiement', () => {
@@ -98,7 +95,6 @@ test('la page se declare en francais et s\'adapte au telephone', () => {
   assert.ok(/<html lang="fr">/.test(SOURCE));
   assert.ok(/<meta charset="utf-8">/i.test(SOURCE), 'charset requis, sinon accents casses');
   assert.ok(/name="viewport"/.test(SOURCE), 'viewport requis pour le telephone');
-  assert.ok(/100dvh/.test(SOURCE), 'hauteur dvh pour les navigateurs mobiles');
 });
 
 test('la page ne contient aucune donnee personnelle', () => {
