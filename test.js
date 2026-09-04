@@ -77,6 +77,18 @@ test('l\'identifiant nettoye remplace celui de l\'adresse', () => {
   assert.ok(src.indexOf('%2F') === -1, 'la barre oblique ne doit pas subsister : ' + src);
 });
 
+test('bascule sur l\'adresse directe si le cadre ne repond pas', () => {
+  // Le cadre echoue la ou les cookies tiers sont bloques : Google rend un 401.
+  // La page doit alors partir sur l'adresse directe plutot que laisser l'erreur.
+  assert.ok(/postMessage|addEventListener\('message'/.test(SOURCE),
+            'la page doit ecouter le signal de chargement');
+  assert.ok(SOURCE.indexOf('tableau-de-bord-pret') !== -1,
+            'le signal attendu doit etre nomme');
+  assert.ok(/location\.replace/.test(SOURCE),
+            'la bascule doit remplacer l\'adresse, pas empiler un historique');
+  assert.ok(/DELAI_BASCULE\s*=\s*\d+/.test(SOURCE), 'un delai explicite est attendu');
+});
+
 test('la page cadre l\'adresse /exec du deploiement', () => {
   assert.ok(/AKfyc[-\w]+/.test(SOURCE), 'adresse du deploiement introuvable');
   assert.ok(SOURCE.indexOf('/exec') !== -1, 'doit cadrer /exec, jamais /dev');

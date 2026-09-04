@@ -152,11 +152,35 @@
     return APPLICATION + '?' + params.toString();
   }
 
+  var DELAI_BASCULE = 5000;
+
+  /**
+   * Le cadre sert a masquer le bandeau bleu ajoute par Google autour de
+   * l'adresse /exec. Mais un navigateur qui bloque les cookies tiers — Safari
+   * sur iPhone, entre autres — n'envoie pas la session Google dans un cadre,
+   * et Google repond alors « 401, That's an error ».
+   *
+   * Le tableau de bord signale son chargement par postMessage. Sans ce signal
+   * au bout de quelques secondes, on part sur l'adresse directe : le bandeau
+   * revient, mais la page fonctionne. C'est la bonne facon d'echouer, et elle
+   * ne depend pas de la cause exacte du blocage.
+   */
   function afficher(id) {
     var cadre = document.getElementById('cadre');
-    cadre.src = construireSrc(id);
+    var direct = construireSrc(id);
+    var recu = false;
+
+    window.addEventListener('message', function (e) {
+      if (e.data === 'tableau-de-bord-pret') recu = true;
+    });
+
+    cadre.src = direct;
     cadre.hidden = false;
     document.getElementById('accueil').hidden = true;
+
+    window.setTimeout(function () {
+      if (!recu) window.location.replace(direct);
+    }, DELAI_BASCULE);
   }
 
   function demander() {
